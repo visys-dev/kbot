@@ -1,8 +1,10 @@
-APP=$(shell basename $(shell git remote get-url origin))
-REGISTRY=visystemhub
-VERSION := $(shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD)
-TARGETOS=linux
-TARGETARCH=arm64
+APP := $(notdir $(CURDIR))
+REGISTRY ?= quay.io/visystemhub
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
+IMAGE_TAG ?= $(REGISTRY)/$(APP):$(VERSION)
+LDFLAGS := -X=github.com/visys-dev/kbot/cmd.appVersion=$(VERSION)
+
+.PHONY: format lint test get build linux arm macos macOS windows image clean
 
 format:
 	gofmt -s -w ./
@@ -11,19 +13,36 @@ lint:
 	golangci-lint run
 
 test:
-	go test -v
+	go test -v ./...
 
 get:
-	go get
+	go mod download
 
-build: format get
-	CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -v -o kbot -ldflags "-X=github.com/visys-dev/kbot/cmd.appVersion=$(VERSION)"
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
+OUTPUT ?= kbot-$(GOOS)-$(GOARCH)$(if $(filter windows,$(GOOS)),.exe)
+
+build: get
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -v \
+		-o $(OUTPUT) -ldflags "$(LDFLAGS)" .
+
+linux:
+	$(MAKE) build GOOS=linux GOARCH=amd64
+
+arm:
+	$(MAKE) build GOOS=linux GOARCH=arm64
+
+macos:
+	$(MAKE) build GOOS=darwin GOARCH=arm64
+
+macOS: macos
+
+windows:
+	$(MAKE) build GOOS=windows GOARCH=amd64
 
 image:
-	docker build . -t ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
-
-push: image
-	docker push ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
+	docker build --build-arg VERSION=$(VERSION) -t $(IMAGE_TAG) .
 
 clean:
-	rm -rf kbot
+	rm -f kbot-linux-amd64 kbot-linux-arm64 kbot-darwin-arm64 kbot-windows-amd64.exe
+	-docker rmi $(IMAGE_TAG)
