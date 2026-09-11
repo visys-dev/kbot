@@ -1,18 +1,14 @@
 replicaCount: 1
-
 image:
   registry: "ghcr.io"
   repository: "visystemhub"
-  tag: "v1.0.2"
+  tag: "v1.0.2-20-g8b675ac"
   os: linux
   arch: amd64
   pullPolicy: IfNotPresent
-
 TELE_TOKEN:
   secretName: "kbot"
   secretKey: "token"
-
 resources: {}
-
 securityContext:
   allowPrivilegeEscalation: false
