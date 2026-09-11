@@ -1,7 +1,14 @@
 APP := $(notdir $(CURDIR))
-REGISTRY ?= quay.io/visystemhub
+
+REGISTRY ?= ghcr.io
+REPOSITORY ?= visys-dev/$(APP)
+
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
-IMAGE_TAG ?= $(REGISTRY)/$(APP):$(VERSION)
+OS ?= linux
+ARCH ?= amd64
+
+IMAGE_TAG := $(REGISTRY)/$(REPOSITORY):$(VERSION)-$(OS)-$(ARCH)
+
 LDFLAGS := -X=github.com/visys-dev/kbot/cmd.appVersion=$(VERSION)
 
 .PHONY: format lint test get build linux arm macos macOS windows image push clean
@@ -41,11 +48,17 @@ windows:
 	$(MAKE) build GOOS=windows GOARCH=amd64
 
 image:
-	docker build --build-arg VERSION=$(VERSION) -t $(IMAGE_TAG) .
+	docker build \
+		--platform $(OS)/$(ARCH) \
+		--build-arg VERSION=$(VERSION) \
+		-t $(IMAGE_TAG) .
 
 push:
 	docker push $(IMAGE_TAG)
 
 clean:
-	rm -f kbot-linux-amd64 kbot-linux-arm64 kbot-darwin-arm64 kbot-windows-amd64.exe
+	rm -f kbot-linux-amd64 \
+	      kbot-linux-arm64 \
+	      kbot-darwin-arm64 \
+	      kbot-windows-amd64.exe
 	-docker rmi $(IMAGE_TAG)
