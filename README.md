@@ -51,11 +51,11 @@ flowchart TD
     BUILD --> GHCR["GitHub Container Registry<br/>ghcr.io/visys-dev/kbot"]
 
     GHCR --> HELMUPDATE["Update Helm image.tag"]
-    HELMUPDATE --> COMMIT["GitHub Actions commit<br/>kbot/values.yaml"]
+    HELMUPDATE --> COMMIT["GitHub Actions commit<br/>helm/values.yaml"]
     COMMIT --> GIT
 
     GIT --> ARGO["ArgoCD"]
-    ARGO --> HELM["Helm Chart<br/>kbot/"]
+    ARGO --> HELM["Helm Chart<br/>helm/"]
     HELM --> K8S["Kubernetes"]
     K8S --> POD["kbot Pod"]
     POD --> TG["Telegram API"]
@@ -106,7 +106,7 @@ make push
 7. CD job оновлює:
 
 ```text
-kbot/values.yaml
+helm/values.yaml
 ```
 
 і записує новий version tag:
@@ -169,13 +169,13 @@ ghcr.io/visys-dev/kbot:<VERSION>-linux-amd64
 Helm chart знаходиться в:
 
 ```text
-kbot/
+helm/
 ```
 
 Основні image parameters задаються в:
 
 ```text
-kbot/values.yaml
+helm/values.yaml
 ```
 
 ```yaml
@@ -225,7 +225,7 @@ syncPolicy:
     selfHeal: true
 ```
 
-Таким чином ArgoCD автоматично застосовує нову версію Helm chart після зміни `kbot/values.yaml`.
+Таким чином ArgoCD автоматично застосовує нову версію Helm chart після зміни `helm/values.yaml`.
 
 Перевірка стану:
 
@@ -381,7 +381,7 @@ I don't know that command
 ├── argocd/
 │   └── kbot.yaml
 ├── cmd/
-├── kbot/
+├── helm/
 │   ├── templates/
 │   ├── Chart.yaml
 │   └── values.yaml
@@ -401,7 +401,7 @@ I don't know that command
 ghcr.io/visys-dev/kbot:<VERSION>-linux-amd64
 ```
 
-Поточна версія визначається автоматично GitHub Actions та записується в `kbot/values.yaml`.
+Поточна версія визначається автоматично GitHub Actions та записується в `helm/values.yaml`.
 
 ## Ліцензія
 
