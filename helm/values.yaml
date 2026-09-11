@@ -1,17 +1,13 @@
 replicaCount: 1
-
 image:
   repository: "visys-dev"
-  tag: "v1.0.2-31-g0bf148c"
+  tag: "v1.0.2-33-g28910f8"
   os: linux
   arch: amd64
   pullPolicy: IfNotPresent
-
 TELE_TOKEN:
   secretName: "kbot"
   secretKey: "token"
-
 resources: {}
-
 securityContext:
   allowPrivilegeEscalation: false
