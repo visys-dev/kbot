@@ -1,77 +1,369 @@
 # Kbot
 
-Kbot — Telegram-бот, написаний мовою Go з використанням бібліотек
-[Telebot](https://github.com/tucnak/telebot) і [Cobra](https://github.com/spf13/cobra).
-Бот приймає текстові команди та надсилає відповідь у Telegram.
+Kbot — Telegram-бот, написаний мовою Go з використанням бібліотек [Telebot](https://github.com/tucnak/telebot) і [Cobra](https://github.com/spf13/cobra).
 
-Під час розробки та тестування проєкту використовувався бот
-[@devops_kbot_bot](https://t.me/devops_kbot_bot). За цим посиланням можна
-перевірити роботу вже розгорнутої версії, якщо бот запущений.
+Бот приймає текстові команди та надсилає відповіді в Telegram.
 
-Для власної розробки та розгортання необхідно створити окремого Telegram-бота
-через [@BotFather](https://t.me/BotFather) й використовувати його токен. Токен
-бота `@devops_kbot_bot` не надається та не потрібен для ознайомлення з його
-публічною версією.
+Під час розробки та тестування використовувався бот [@devops_kbot_bot](https://t.me/devops_kbot_bot).
 
-## Вимоги
+## CI/CD
 
-- Go 1.26.1 або новішої сумісної версії;
-- Telegram-акаунт;
-- власний Telegram-бот і його токен, отриманий через
-  [@BotFather](https://t.me/BotFather), якщо ви плануєте запускати проєкт
-  локально або розгортати власну версію.
+Проєкт використовує повністю автоматизований CI/CD pipeline на основі:
 
-## Встановлення
+- **GitHub Actions** — CI/CD automation;
+- **GitHub Container Registry (`ghcr.io`)** — container registry;
+- **Docker** — створення container image;
+- **Helm** — Kubernetes packaging;
+- **ArgoCD** — GitOps deployment;
+- **Kubernetes** — runtime infrastructure.
 
-Клонуйте репозиторій і перейдіть до каталогу проєкту:
+Workflow запускається при `push` у гілку `develop`.
+
+Цільова платформа container image:
+
+```text
+OS: linux
+Architecture: amd64
+```
+
+Container image має формат:
+
+```text
+ghcr.io/visys-dev/kbot:<VERSION>-linux-amd64
+```
+
+Наприклад:
+
+```text
+ghcr.io/visys-dev/kbot:v1.0.2-22-gf490f1f-linux-amd64
+```
+
+### CI/CD Workflow
+
+```mermaid
+flowchart TD
+    DEV["Developer"] -->|"git push origin develop"| GIT["GitHub Repository<br/>develop"]
+
+    GIT --> GHA["GitHub Actions"]
+
+    GHA --> TEST["Go Tests<br/>make test"]
+    TEST --> BUILD["Docker Build<br/>linux/amd64"]
+    BUILD --> GHCR["GitHub Container Registry<br/>ghcr.io/visys-dev/kbot"]
+
+    GHCR --> HELMUPDATE["Update Helm image.tag"]
+    HELMUPDATE --> COMMIT["GitHub Actions commit<br/>kbot/values.yaml"]
+    COMMIT --> GIT
+
+    GIT --> ARGO["ArgoCD"]
+    ARGO --> HELM["Helm Chart<br/>kbot/"]
+    HELM --> K8S["Kubernetes"]
+    K8S --> POD["kbot Pod"]
+    POD --> TG["Telegram API"]
+
+    USER["Telegram User"] --> TG
+    TG --> POD
+```
+
+### Workflow sequence
+
+При кожному push основного коду в `develop`:
+
+1. GitHub Actions checkout-ить repository.
+2. Виконується тестування Go-коду:
+
+```bash
+make test
+```
+
+3. На основі Git tag і Git commit формується `VERSION`.
+
+Приклад:
+
+```text
+v1.0.2-22-gf490f1f
+```
+
+4. GitHub Actions автентифікується в `ghcr.io` через `GITHUB_TOKEN`.
+
+5. Makefile збирає container image:
+
+```bash
+make image
+```
+
+Формат:
+
+```text
+ghcr.io/visys-dev/kbot:${VERSION}-linux-amd64
+```
+
+6. Image публікується в GitHub Container Registry:
+
+```bash
+make push
+```
+
+7. CD job оновлює:
+
+```text
+kbot/values.yaml
+```
+
+і записує новий version tag:
+
+```yaml
+image:
+  registry: "ghcr.io"
+  repository: "visys-dev/kbot"
+  tag: "v1.0.2-22-gf490f1f"
+  os: linux
+  arch: amd64
+```
+
+8. GitHub Actions commit-ить оновлений `values.yaml` назад у `develop`.
+
+9. ArgoCD виявляє зміну в Git repository.
+
+10. ArgoCD виконує automated sync Helm chart у Kubernetes.
+
+11. Kubernetes створює новий Pod з новою версією image.
+
+У результаті зміна коду автоматично проходить шлях:
+
+```text
+Git
+→ GitHub Actions
+→ GHCR
+→ Helm
+→ Git
+→ ArgoCD
+→ Kubernetes
+→ Telegram bot
+```
+
+## Makefile
+
+Основні команди:
+
+```bash
+make test
+make build
+make image
+make push
+```
+
+За замовчуванням container image збирається для:
+
+```text
+linux/amd64
+```
+
+Формат image:
+
+```text
+ghcr.io/visys-dev/kbot:<VERSION>-linux-amd64
+```
+
+## Helm
+
+Helm chart знаходиться в:
+
+```text
+kbot/
+```
+
+Основні image parameters задаються в:
+
+```text
+kbot/values.yaml
+```
+
+```yaml
+image:
+  registry: "ghcr.io"
+  repository: "visys-dev/kbot"
+  tag: "<VERSION>"
+  os: linux
+  arch: amd64
+  pullPolicy: IfNotPresent
+```
+
+Перевірка chart:
+
+```bash
+helm lint ./kbot
+```
+
+Render manifests:
+
+```bash
+helm template kbot ./kbot
+```
+
+Перевірка результуючого image:
+
+```bash
+helm template kbot ./kbot | grep 'image:'
+```
+
+## ArgoCD
+
+ArgoCD використовує repository як GitOps source:
+
+```text
+Repository: https://github.com/visys-dev/kbot.git
+Branch: develop
+Path: kbot
+```
+
+Application налаштований з automated synchronization:
+
+```yaml
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+```
+
+Таким чином ArgoCD автоматично застосовує нову версію Helm chart після зміни `kbot/values.yaml`.
+
+Перевірка стану:
+
+```bash
+kubectl get applications
+```
+
+Очікуваний результат:
+
+```text
+NAME   SYNC STATUS   HEALTH STATUS
+kbot   Synced        Healthy
+```
+
+Перевірка Deployment:
+
+```bash
+kubectl get deployment kbot
+```
+
+Перевірка image, який реально використовується Kubernetes:
+
+```bash
+kubectl get deployment kbot \
+  -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+```
+
+Очікуваний формат:
+
+```text
+ghcr.io/visys-dev/kbot:<VERSION>-linux-amd64
+```
+
+## Telegram token
+
+Telegram token не зберігається в Git repository.
+
+В Kubernetes він передається через Secret:
+
+```text
+kbot
+```
+
+Helm chart використовує:
+
+```yaml
+TELE_TOKEN:
+  secretName: "kbot"
+  secretKey: "token"
+```
+
+Створення Secret:
+
+```bash
+kubectl create secret generic kbot \
+  --from-literal=token='YOUR_TELEGRAM_TOKEN'
+```
+
+## Validation
+
+Перевірка Pod:
+
+```bash
+kubectl get pods
+```
+
+Перевірка logs:
+
+```bash
+kubectl logs deployment/kbot --tail=100
+```
+
+Перевірка ArgoCD:
+
+```bash
+kubectl get applications
+```
+
+Очікуваний стан:
+
+```text
+Synced / Healthy
+```
+
+Після deployment робота Telegram-бота перевіряється командою:
+
+```text
+/hello
+```
+
+Бот повинен повернути привітання та свою версію.
+
+## Локальна розробка
+
+Клонуйте repository:
 
 ```bash
 git clone https://github.com/visys-dev/kbot.git
 cd kbot
 ```
 
-Завантажте залежності та скомпілюйте застосунок:
+Завантажте залежності:
 
 ```bash
 go mod download
-go build -o kbot .
 ```
 
-Для локального запуску спочатку створіть власного бота через
-[@BotFather](https://t.me/BotFather). Після створення задайте отриманий токен у
-змінній середовища:
+Збірка:
 
 ```bash
-export TELEGRAM_TOKEN="your-telegram-bot-token"
+make build
 ```
 
-> Не додавайте справжній токен до репозиторію або README.
+Для локального запуску задайте Telegram token:
 
-Запустіть бота:
+```bash
+export TELE_TOKEN="your-telegram-bot-token"
+```
+
+Запуск:
+
+```bash
+./kbot kbot
+```
+
+або:
 
 ```bash
 ./kbot start
 ```
 
-Або запустіть його без попередньої компіляції:
+> Не додавайте Telegram token або інші secrets у Git repository.
 
-```bash
-go run . start
-```
+## Команди Telegram-бота
 
-Після запуску відкрийте в Telegram свого бота, ім'я якого ви вказали під час
-реєстрації в `@BotFather`, і надішліть йому команду.
-
-Якщо ви не запускаєте власну копію проєкту, можете ознайомитися з версією, яка
-використовувалася під час розробки: [t.me/devops_kbot_bot](https://t.me/devops_kbot_bot).
-
-## Команди
-
-### Команди Telegram-бота
-
-| Команда | Опис | Приклад відповіді |
-| --- | --- | --- |
-| `/hello` | Привітання та поточна версія бота | `Hello, I'm Kbot Version!` |
+| Команда | Опис |
+| --- | --- |
+| `/hello` | Привітання та поточна версія бота |
 
 Для невідомої команди бот відповідає:
 
@@ -79,48 +371,37 @@ go run . start
 I don't know that command
 ```
 
-Приклад використання:
-
-```text
-Користувач: /hello
-Бот: Hello, I'm Kbot Version!
-```
-
-### Команди застосунку
-
-Переглянути довідку:
-
-```bash
-./kbot --help
-```
-
-Переглянути версію:
-
-```bash
-./kbot version
-```
-
-Запустити Telegram-бота:
-
-```bash
-./kbot kbot
-```
-
-Також можна використати псевдонім команди:
-
-```bash
-./kbot start
-```
-
 ## Структура проєкту
 
 ```text
 .
-├── cmd/          # CLI-команди та логіка Telegram-бота
-├── go.mod        # модуль і залежності Go
-├── go.sum        # зафіксовані версії залежностей
-└── main.go       # точка входу в застосунок
+├── .github/
+│   └── workflows/
+│       └── cicd.yml
+├── argocd/
+│   └── kbot.yaml
+├── cmd/
+├── kbot/
+│   ├── templates/
+│   ├── Chart.yaml
+│   └── values.yaml
+├── Dockerfile
+├── Makefile
+├── README.md
+├── go.mod
+├── go.sum
+└── main.go
 ```
+
+## Container image
+
+Результуючий container image публікується в GitHub Container Registry:
+
+```text
+ghcr.io/visys-dev/kbot:<VERSION>-linux-amd64
+```
+
+Поточна версія визначається автоматично GitHub Actions та записується в `kbot/values.yaml`.
 
 ## Ліцензія
 
