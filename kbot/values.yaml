@@ -1,18 +1,14 @@
 replicaCount: 1
-
 image:
   registry: "ghcr.io"
   repository: "visys-dev/kbot"
-  tag: "v1.0.2-20-g8b675ac"
+  tag: "v1.0.2-22-gf490f1f"
   os: linux
   arch: amd64
   pullPolicy: IfNotPresent
-
 TELE_TOKEN:
   secretName: "kbot"
   secretKey: "token"
-
 resources: {}
-
 securityContext:
   allowPrivilegeEscalation: false
