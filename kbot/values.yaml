@@ -1,16 +1,12 @@
 replicaCount: 1
-
 image:
   repository: "visystemhub"
-  tag: "v1.0.2-27db39e"
+  tag: "v1.0.2-18-g106cff6"
   arch: amd64
   pullPolicy: IfNotPresent
-
 TELE_TOKEN:
   secretName: "kbot"
   secretKey: "token"
-
 resources: {}
-
 securityContext:
   allowPrivilegeEscalation: false
