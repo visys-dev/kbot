@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: "visysdev"
+  repository: "visys-dev"
   tag: "v1.0.2-33-g28910f8"
   os: linux
   arch: amd64
