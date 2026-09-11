@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: {{ .Release.Name }}
-          image: "ghcr.io/{{ .Values.image.repository }}:{{ .Values.image.tag }}-{{ .Values.image.os }}-{{ .Values.image.arch }}"
+          image: "ghcr.io/{{ .Values.image.repository }}/{{ .Chart.Name }}:{{ .Values.image.tag }}-{{ .Values.image.os }}-{{ .Values.image.arch }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
 
           args:
