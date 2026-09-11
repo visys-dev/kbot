@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   registry: "ghcr.io"
   repository: "visys-dev/kbot"
-  tag: "v1.0.2-28-g43edecb"
+  tag: "v1.0.2-31-g0bf148c"
   os: linux
   arch: amd64
   pullPolicy: IfNotPresent
