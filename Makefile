@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null)
 IMAGE_TAG ?= $(REGISTRY)/$(APP):$(VERSION)
 LDFLAGS := -X=github.com/visys-dev/kbot/cmd.appVersion=$(VERSION)
 
-.PHONY: format lint test get build linux arm macos macOS windows image clean
+.PHONY: format lint test get build linux arm macos macOS windows image push clean
 
 format:
 	gofmt -s -w ./
@@ -42,6 +42,9 @@ windows:
 
 image:
 	docker build --build-arg VERSION=$(VERSION) -t $(IMAGE_TAG) .
+
+push:
+	docker push $(IMAGE_TAG)
 
 clean:
 	rm -f kbot-linux-amd64 kbot-linux-arm64 kbot-darwin-arm64 kbot-windows-amd64.exe
