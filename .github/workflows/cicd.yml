@@ -3,7 +3,7 @@ name: KBOT-CI/CD
 on:
   push:
     branches:
-      - main
+      - develop
     paths-ignore:
       - "kbot/values.yaml"
 
