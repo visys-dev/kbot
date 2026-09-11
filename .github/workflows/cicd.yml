@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - "helm/values.yaml"
+      - "kbot/values.yaml"
 
 permissions:
   contents: write
@@ -55,14 +55,14 @@ jobs:
       - name: Update Helm image tag
         uses: mikefarah/yq@master
         with:
-          cmd: yq -i '.image.tag = strenv(VERSION)' helm/values.yaml
+          cmd: yq -i '.image.tag = strenv(VERSION)' kbot/values.yaml
 
       - name: Commit Helm version
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add helm/values.yaml
+          git add kbot/values.yaml
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
