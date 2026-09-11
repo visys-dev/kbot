@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://github.com/visys-dev/kbot.git
     targetRevision: develop
-    path: kbot
+    path: helm
 
   destination:
     server: https://kubernetes.default.svc
