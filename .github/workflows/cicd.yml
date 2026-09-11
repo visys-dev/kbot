@@ -72,4 +72,3 @@ jobs:
 
           git commit -m "Update image version to $VERSION"
           git push
-```
