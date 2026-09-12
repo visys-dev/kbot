@@ -37,7 +37,7 @@ jobs:
       - name: Set VERSION
         id: version
         run: |
-          VERSION="$(git describe --tags --always)"
+          VERSION="$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "VERSION=$VERSION"

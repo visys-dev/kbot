@@ -1,7 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: "visys-dev"
+  registry: "ghcr.io"
+  repository: "visys-dev/kbot"
   tag: "v1.0.2-33-g28910f8"
   os: linux
   arch: amd64
